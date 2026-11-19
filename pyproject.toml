@@ -1,0 +1,28 @@
+[project]
+name = "ptx-dispatch"
+version = "0.1.0"
+description = "Hour-by-hour dispatch of a grid-connected electrolyser on Danish spot price and CO2 intensity (Energi Data Service)"
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.11"
+keywords = ["power-to-x", "hydrogen", "electrolysis", "dispatch", "denmark", "co2"]
+dependencies = [
+    # Same Energi Data Service client as the energidata-mcp server, pinned to a commit.
+    "energidata-mcp @ git+https://github.com/batutho-dot/energidata-mcp@d8795918ae77ac0439f176b43b1ecf3616052b31",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.metadata]
+allow-direct-references = true
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/ptx_dispatch"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
