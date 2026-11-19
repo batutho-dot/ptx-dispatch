@@ -91,13 +91,48 @@ Range tested on the strategy settings: N = 4, 8, 12, 16, 20 h/day; price limits 
 Known limitations:
 
 - CO2Emis is Energinet's initial data; Energinet points to the Declaration Grid Emission
-  dataset for later, revised values. One hour (2026-03-29 03:00 Danish time, the night the
-  clocks go forward) carries -213.1 g CO2/kWh in the source. It is used as published; it is
-  one hour of 8,724.
+  dataset for later, revised values, and its documentation says errors "will generally not
+  be corrected". See the data checks below for the one negative hour.
 - Average, not marginal, emissions: a new 10 MW load is assumed not to change the grid mix.
 - Perfect foresight: the strategies see the whole day's price and CO2 in advance. Day-ahead
   prices are known the day before; measured CO2 is not.
 - No storage or offtake constraint: hydrogen is assumed taken whenever it is made.
+
+## Data checks
+
+**Why the cheapest hours carry more CO2.** "Price <= 0" gives 8.89 kg CO2/kg H2, which means
+about 155 g CO2/kWh in negative-price hours against a period mean of 103. That looked like a
+join error, so the join was checked:
+
+- Both datasets label each value with the *start* of its interval, in UTC and in Danish
+  time (Energinet dataset documentation, columns TimeUTC and Minutes5UTC). The code groups
+  both on the UTC hour, so a price hour and a CO2 hour cover the same 60 minutes, also across
+  daylight-saving changes.
+- Raw API rows for 10 negative-price hours on 2025-10-04 were re-fetched. In every hour the 4
+  price rows run :00 to :45 and the 12 CO2 rows run :00 to :55 of the same UTC hour, and their
+  means equal the joined values (for example 11:00 UTC: -0.36 EUR/MWh and 178.50 g/kWh).
+- Shifting the CO2 series by -2 to +2 hours lowers the CO2 of negative-price hours
+  (134 to 151 g/kWh) and never brings it near the mean. The unshifted join is not an offset.
+
+So the pattern is in the data, not in the code. Negative prices in DK1 this year fall mostly
+at midday (186 of 250 hours start between 10:00 and 15:00 Danish time) and from April to
+July (187 of 250 hours). In those months the CO2 intensity of consumption peaks at midday too (about 135 g/kWh at
+13:00 against about 90 g/kWh in the evening). Even within the same month and hour of day,
+negative-price hours average 41 g/kWh more CO2 than the other hours (65 of 73 such cells).
+Why the consumed mix is dirtier then (for example imports during solar surplus hours) was
+not checked here. The result for this case: **running in the cheapest hours raises CO2 per kg
+above always on** (6.57 against 5.93 kg CO2/kg at 4 h/day), because in DK1 over this year
+cheap hours and clean hours were not the same hours.
+
+**The negative CO2 value.** One hour, 2026-03-29 01:00 UTC (03:00 Danish time, the first hour
+after the clocks went forward), averages -213.1 g CO2/kWh; all 12 five-minute values are
+negative (-154 to -321). Energinet's documentation gives no meaning for a negative value: it
+describes a calculation from power plant emissions, production, consumption and exchange per
+hour, and notes that errors from the real-time measurements occur and are generally not
+corrected; it also records a separate DST-related data fault in October 2026. This hour is
+therefore read as a data error, not an export credit. It is kept as published so the table
+matches the source; dropping it changes five rows by 0.01 at most (for example
+"Cleanest 4 h/day" 3.62 to 3.63 kg CO2/kg) and no other row.
 
 ## Reproduce
 
